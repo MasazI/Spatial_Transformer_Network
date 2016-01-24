@@ -1,9 +1,13 @@
 # encoding: utf-8
 '''
-spatial transfoer network
+spatial transfomer network
 '''
 import os
+
+# theano gpu
 os.environ['THEANO_FLAGS']='device=gpu0'
+
+import argparse
 
 # numpy
 import numpy as np
@@ -11,6 +15,9 @@ np.random.seed(123)
 
 # load data
 import load_data as load
+
+# save model
+import pickle
 
 # matplotlib
 import matplotlib
@@ -26,7 +33,7 @@ conv = lasagne.layers.Conv2DLayer
 pool = lasagne.layers.MaxPool2DLayer
 
 # training parameters
-NUM_EPOCHS = 500
+NUM_EPOCHS = 50
 BATCH_SIZE = 256
 LEARNING_RATE = 0.001
 DIM = 60
@@ -152,6 +159,32 @@ def transpose_visualization(data, transform):
     plt.tight_layout()
     plt.show()
 
+def stn_eval(model_file):
+    print("model: %s" % (model_file))
+    data = load.load_data(mnist_cluttered, DIM)
+    
+    values = pickle.load(open(model_file, 'r'))
+    network_model, l_transform = model(DIM, DIM, NUM_CLASSES)
+    lasagne.layers.set_all_param_values(network_model, values)
+   
+    X = T.tensor4()
+    y = T.ivector()
+
+    output_eval, transform_eval = lasagne.layers.get_output([network_model, l_transform], X, deterministic=True)
+
+    # create funcition
+    eval = theano.function([X], [output_eval, transform_eval])
+
+    # evalation function
+    def eval_func(X, y):
+        output_eval, transform_eval = eval(X)
+        preds = np.argmax(output_eval, axis=-1)
+        acc = np.mean(preds == y)
+        return acc, transform_eval
+  
+    test_acc, test_transform = eval_func(data['X_test'], data['y_test'])
+    transpose_visualization(data, test_transform)
+    print("test acc: %f" % (test_acc))
 
 def stn():
     # load data
@@ -224,13 +257,19 @@ def stn():
             train_accs += [train_acc]
     
             # 20epochごとに学習率を更新
-            if (n+1) % 20 == 0:
+            if (n+1) % 10 == 0:
                 new_lr = sh_lr.get_value() * 0.7
                 print "New LR:", new_lr
                 sh_lr.set_value(lasagne.utils.floatX(new_lr))
                 transpose_visualization(data, test_transform)           
-    
-            print("Epoch %d: Train cost %f, Train acc %f, val acc %f, test acc %f" % (n, train_cost, train_acc, valid_acc, test_acc))
+   
+            # 25epochごとにモデルを保存
+            if (n+1) % 25 == 0:
+                values = lasagne.layers.get_all_param_values(network_model)
+                checkpoint_name = 'model_%d.pkl' % (n+1)
+                pickle.dump(values, open(checkpoint_name, 'w'))
+ 
+            print("Epoch %d: Train cost %f, Train acc %f, val acc %f, test acc %f" % (n+1, train_cost, train_acc, valid_acc, test_acc))
     except KeyboardInterrupt:
         pass
     print("training finish.")
@@ -239,5 +278,15 @@ def stn():
     visualization(train_accs, valid_accs)
 
 
+# argparser
+parser = argparse.ArgumentParser(
+    description='Spatial Transformer Network Sample.')
+parser.add_argument('mode', help='train of eval')
+parser.add_argument('--model', '-m', default='model_50.pkl')
+args = parser.parse_args()
+
 if __name__ == '__main__':
-    stn()
+    if args.mode == 'train':
+        stn()
+    elif args.mode == 'eval':
+        stn_eval(args.model)
