@@ -150,6 +150,7 @@ def transpose_visualization(data, transform):
             plt.title('Transformed 20x20', fontsize=20)
         plt.axis('off')
     plt.tight_layout()
+    plt.show()
 
 
 def stn():
