@@ -162,7 +162,6 @@ def stn():
 
     # training function by epoch
     def train_by_epoch(X, y):
-        print("start train epoch.")
         num_samples = X.shape[0]
         num_batches = int(np.ceil(num_samples/float(BATCH_SIZE)))
         costs = []
@@ -177,16 +176,13 @@ def stn():
             correct += np.sum(y_batch == preds)
     
         # 平均コスト, 平均精度
-        print("finish train epoch.")
         return np.mean(costs), correct / float(num_samples)
     
     # evalation function by epoch
     def eval_by_epoch(X, y):
-        print("start eval epoch.")
         output_eval, transform_eval = eval(X)
         preds = np.argmax(output_eval, axis=-1)
         acc = np.mean(preds == y)
-        print("finish eval epoch.")
         return acc, transform_eval
   
     print("training start.")
