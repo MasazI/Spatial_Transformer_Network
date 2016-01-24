@@ -126,6 +126,32 @@ def model(input_width, input_height, output_dim, batch_size=BATCH_SIZE):
     return l_out, l_trans1
 
 
+def visualization(train_accs, valid_accs):
+    plt.figure(figsize=(9,9))
+    plt.plot(1-np.array(train_accs), label='Training Error')
+    plt.plot(1-np.array(valid_accs), label='Validation Error')
+    plt.legend(fontsize=20)
+    plt.xlabel('Epoch', fontsize=20)
+    plt.ylabel('Error', fontsize=20)
+    plt.show()
+
+
+def transpose_visualization(data, transform):
+    plt.figure(figsize=(7,14))
+    for i in range(3):
+        plt.subplot(321+i*2)
+        plt.imshow(data['X_test'][i].reshape(DIM, DIM), cmap='gray', interpolation='none')
+        if i == 0:
+            plt.title('Original 60x60', fontsize=20)
+        plt.axis('off')
+        plt.subplot(322+i*2)
+        plt.imshow(transform[i].reshape(DIM//3, DIM//3), cmap='gray', interpolation='none')
+        if i == 0:
+            plt.title('Transformed 20x20', fontsize=20)
+        plt.axis('off')
+    plt.tight_layout()
+
+
 def stn():
     # load data
     data = load.load_data(mnist_cluttered, DIM)
@@ -196,15 +222,20 @@ def stn():
             test_accs += [test_acc]
             train_accs += [train_acc]
     
+            # 20epochごとに学習率を更新
             if (n+1) % 20 == 0:
                 new_lr = sh_lr.get_value() * 0.7
                 print "New LR:", new_lr
                 sh_lr.set_value(lasagne.utils.floatX(new_lr))
+                transpose_visualization(data, test_transform)           
     
             print("Epoch %d: Train cost %f, Train acc %f, val acc %f, test acc %f" % (n, train_cost, train_acc, valid_acc, test_acc))
     except KeyboardInterrupt:
         pass
     print("training finish.")
+
+    # visialization
+    visualization(train_accs, valid_accs)
 
 
 if __name__ == '__main__':
